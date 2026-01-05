@@ -1,0 +1,51 @@
+modules = ["nodejs-20"]
+[agent]
+expertMode = true
+
+[nix]
+channel = "stable-25_05"
+
+[userenv]
+
+[userenv.shared]
+POSTGRES_HOST = "helium"
+POSTGRES_PORT = "5432"
+POSTGRES_DATABASE = "heliumdb"
+POSTGRES_USER = "postgres"
+POSTGRES_PASSWORD = "password"
+POSTGRES_SYNCHRONIZE = "true"
+PORT = "5000"
+FRONTEND_URL = "https://www.rotgo.com.br"
+
+[workflows]
+runButton = "Project"
+
+[[workflows.workflow]]
+name = "Project"
+mode = "parallel"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "workflow.run"
+args = "Backend API"
+
+[[workflows.workflow]]
+name = "Backend API"
+author = "agent"
+
+[[workflows.workflow.tasks]]
+task = "shell.exec"
+args = "npm run start:dev"
+waitForPort = 5000
+
+[workflows.workflow.metadata]
+outputType = "webview"
+
+[[ports]]
+localPort = 5000
+externalPort = 80
+
+[deployment]
+deploymentTarget = "autoscale"
+run = ["node", "dist/main.js"]
+build = ["npm", "run", "build"]
