@@ -7,18 +7,35 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  ManyToOne,
 } from 'typeorm';
 import { Visita } from '../visitas/visitas.entity';
 import { Chamado } from '../chamados/chamados.entity';
 import { Roteiro } from '../roteiros/roteiros.entity';
+import { Workspace } from '../workspaces/workspace.entity';
+import { User } from '../users/user.entity';
 
 @Index(['nome'])
 @Index(['email'])
 @Index(['placa'])
+@Index(['workspaceId'])
+@Index(['userId'])
 @Entity('tecnicos')
 export class Tecnico {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column()
+  workspaceId: string;
+
+  @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
+  workspace: Workspace;
+
+  @Column({ nullable: true })
+  userId?: string;
+
+  @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
+  user?: User;
 
   @Column()
   nome: string;

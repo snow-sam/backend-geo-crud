@@ -10,15 +10,23 @@ import {
   DeleteDateColumn,
 } from 'typeorm';
 import { Tecnico } from '../tecnicos/tecnicos.entity';
-import { RoteiroCliente } from '../roteiro-cliente/roteiro-cliente.entity';
+import type { Visita } from '../visitas/visitas.entity';
+import { Workspace } from '../workspaces/workspace.entity';
 
 @Entity('roteiros')
 @Index(['tecnicoId'])
 @Index(['data'])
 @Index(['status'])
+@Index(['workspaceId'])
 export class Roteiro {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column()
+  workspaceId: string;
+
+  @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
+  workspace: Workspace;
 
   @Column()
   tecnicoId: string;
@@ -47,6 +55,6 @@ export class Roteiro {
   @ManyToOne(() => Tecnico, (tecnico) => tecnico.roteiros, { onDelete: 'CASCADE' })
   tecnico: Tecnico;
 
-  @OneToMany(() => RoteiroCliente, (roteiroCliente) => roteiroCliente.roteiro)
-  clientes: RoteiroCliente[];
+  @OneToMany('Visita', 'roteiro')
+  visitas: Visita[];
 }

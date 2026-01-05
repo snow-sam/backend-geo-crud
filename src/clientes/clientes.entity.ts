@@ -7,10 +7,11 @@ import {
   UpdateDateColumn,
   DeleteDateColumn,
   OneToMany,
+  ManyToOne,
 } from 'typeorm';
 import { Visita } from '../visitas/visitas.entity';
 import { Chamado } from '../chamados/chamados.entity';
-import { RoteiroCliente } from '../roteiro-cliente/roteiro-cliente.entity';
+import { Workspace } from '../workspaces/workspace.entity';
 
 export enum ClientePrioridade {
     BAIXA = 0,
@@ -21,10 +22,17 @@ export enum ClientePrioridade {
 
 @Index(['nome'])
 @Index(['email'])
+@Index(['workspaceId'])
 @Entity('clientes')
 export class Cliente {
   @PrimaryGeneratedColumn('uuid')
   id: string;
+
+  @Column()
+  workspaceId: string;
+
+  @ManyToOne(() => Workspace, { onDelete: 'CASCADE' })
+  workspace: Workspace;
 
   @Column()
   nome: string;
@@ -38,11 +46,17 @@ export class Cliente {
   @Column('float')
   longitude: number;
 
-  @Column({ default: 0 })
+  @Column({ default: 1 })
   visitasMensais: number;
 
   @Column({ default: 60 })
   duracaoMediaMinutos: number;
+
+  @Column({ type: 'time', default: '08:00' })
+  horaAbertura: string;
+
+  @Column({ type: 'time', default: '18:00' })
+  horaFechamento: string;
 
   @Column({
         type: "enum",
@@ -80,7 +94,4 @@ export class Cliente {
 
   @OneToMany(() => Chamado, (chamado) => chamado.cliente)
   chamados: Chamado[];
-
-  @OneToMany(() => RoteiroCliente, (roteiroCliente) => roteiroCliente.cliente)
-  roteiroClientes: RoteiroCliente[];
 }

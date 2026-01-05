@@ -6,20 +6,26 @@ import { ClientesModule } from './clientes/clientes.module';
 import { VisitasModule } from './visitas/visitas.module';
 import { RoteirosModule } from './roteiros/roteiros.module';
 import { ChamadosModule } from './chamados/chamados.module';
-import { RoteiroClienteModule } from './roteiro-cliente/roteiro-cliente.module';
 import { AgendaMesModule } from './agenda/agenda-mes.module';
+import { AuthModule } from './auth/auth.module';
+import { WorkspacesModule } from './workspaces/workspaces.module';
+import { DashboardModule } from './dashboard/dashboard.module';
+import { RelatorioVisitaModule } from './relatorios-visita/relatorio-visita.module';
 
 @Module({
   imports: [
     ConfigModule.forRoot({isGlobal: true}),
     DatabaseModule,
+    WorkspacesModule,
     TecnicosModule,
     ClientesModule,
     VisitasModule,
     RoteirosModule,
     ChamadosModule,
-    RoteiroClienteModule,
     AgendaMesModule,
+    AuthModule,
+    DashboardModule,
+    RelatorioVisitaModule,
   ],
   controllers: [],
   providers: [],
