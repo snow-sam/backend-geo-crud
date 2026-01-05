@@ -8,11 +8,11 @@ channel = "stable-25_05"
 [userenv]
 
 [userenv.shared]
-POSTGRES_HOST = "helium"
+POSTGRES_HOST = "db.bkrcymgtdumfguvwqnud.supabase.co"
 POSTGRES_PORT = "5432"
-POSTGRES_DATABASE = "heliumdb"
+POSTGRES_DATABASE = "postgres"
 POSTGRES_USER = "postgres"
-POSTGRES_PASSWORD = "password"
+POSTGRES_PASSWORD = "BbQV3oV8fcWewDga"
 POSTGRES_SYNCHRONIZE = "true"
 PORT = "5000"
 FRONTEND_URL = "https://www.rotgo.com.br"
