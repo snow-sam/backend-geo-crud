@@ -154,7 +154,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       // Criar usuário no sistema de autenticação
       let user: User;
       try {
-        const password = placa || this.generateTempPassword();
+        const password = `${placa}0` || this.generateTempPassword();
         user = await this.createAuthUser(email, password);
         this.logger.log(`Usuário criado para técnico: ${email}`);
       } catch (error) {
