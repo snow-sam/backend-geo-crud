@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as XLSX from 'xlsx';
 
@@ -27,7 +32,10 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
    * Gera uma senha temporária caso a placa não seja informada
    */
   private generateTempPassword(): string {
-    return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+    return (
+      Math.random().toString(36).slice(-8) +
+      Math.random().toString(36).slice(-8).toUpperCase()
+    );
   }
 
   /**
@@ -45,7 +53,9 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       });
 
       if (!authResult?.user) {
-        throw new BadRequestException('Falha ao criar usuário no sistema de autenticação');
+        throw new BadRequestException(
+          'Falha ao criar usuário no sistema de autenticação',
+        );
       }
 
       this.logger.log(`Usuário criado no Better Auth: ${authResult.user.id}`);
@@ -76,7 +86,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
   ): Promise<Tecnico> {
     // Define a senha como a placa ou gera uma temporária
     const password = dto.placa || this.generateTempPassword();
-    
+
     // Cria o usuário no sistema de autenticação
     const user = await this.createAuthUser(dto.email!, password);
 
@@ -106,7 +116,10 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     return tecnico;
   }
 
-  async importFromExcel(fileBuffer: Buffer, workspaceId: string): Promise<Tecnico[]> {
+  async importFromExcel(
+    fileBuffer: Buffer,
+    workspaceId: string,
+  ): Promise<Tecnico[]> {
     // Ler o arquivo Excel do buffer
     const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -121,18 +134,32 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
 
     this.logger.log(`Importando ${rows.length} técnicos do Excel`);
 
-    const tecnicosToCreate: Partial<Tecnico>[] = [];
+    const savedTecnicos: Tecnico[] = [];
     const errors: string[] = [];
 
     for (const [index, row] of rows.entries()) {
-      this.logger.log(
-        `(${index + 1}/${rows.length}) Processando: ${row.nome}`,
-      );
+      this.logger.log(`(${index + 1}/${rows.length}) Processando: ${row.nome}`);
 
       // Validar campos obrigatórios
       if (!row.nome || !row.endereco || !row.telefone || !row.email) {
         errors.push(
           `Linha ${index + 2}: Nome, endereço, telefone e email são obrigatórios`,
+        );
+        continue;
+      }
+
+      const email = row.email.toString().trim().toLowerCase();
+      const placa = row.placa?.toString().trim().toUpperCase() || undefined;
+
+      // Criar usuário no sistema de autenticação
+      let user: User;
+      try {
+        const password = placa || this.generateTempPassword();
+        user = await this.createAuthUser(email, password);
+        this.logger.log(`Usuário criado para técnico: ${email}`);
+      } catch (error) {
+        errors.push(
+          `Linha ${index + 2}: Erro ao criar usuário para "${email}": ${error.message}`,
         );
         continue;
       }
@@ -147,39 +174,37 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
         continue;
       }
 
-      // Criar objeto do técnico
+      // Criar objeto do técnico com userId
       const tecnico: Partial<Tecnico> = {
         nome: row.nome.trim(),
         telefone: row.telefone.toString().trim(),
-        email: row.email.toString().trim().toLowerCase(),
+        email,
         endereco: geoData.enderecoFormatado,
         latitude: geoData.latitude,
         longitude: geoData.longitude,
         placeId: geoData.placeId,
-        placa: row.placa?.toString().trim().toUpperCase() || undefined,
+        placa,
         especialidade: row.especialidade?.toString().trim() || undefined,
         eAtivo: true,
         workspaceId,
+        userId: user.id,
       };
 
-      tecnicosToCreate.push(tecnico);
+      // Salvar técnico individualmente para manter consistência com o usuário criado
+      const savedTecnico = await this.repo.save(tecnico as Tecnico);
+      savedTecnicos.push(savedTecnico);
 
       // Delay de 150ms entre chamadas para evitar rate limiting da API
       await this.geocodingService.delay(150);
     }
 
-    if (tecnicosToCreate.length === 0) {
+    if (savedTecnicos.length === 0) {
       throw new BadRequestException(
         `Nenhum técnico válido para importar. Erros: ${errors.join('; ')}`,
       );
     }
 
-    // Salvar todos os técnicos em batch
-    const savedTecnicos = await this.repo.save(tecnicosToCreate as Tecnico[]);
-
-    this.logger.log(
-      `${savedTecnicos.length} técnicos importados com sucesso`,
-    );
+    this.logger.log(`${savedTecnicos.length} técnicos importados com sucesso`);
 
     if (errors.length > 0) {
       this.logger.warn(`Erros durante importação: ${errors.join('; ')}`);
