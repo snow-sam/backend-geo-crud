@@ -10,6 +10,8 @@ import { TypeOrmUserResolverAdapter } from '../adapters/typeorm-user-resolver.ad
 import { DataSource } from 'typeorm';
 import { TypeOrmWorkspaceResolverAdapter } from '../adapters/typeorm-workspace-resolver.adapter';
 import { BadRequestException } from '@nestjs/common';
+import { Tecnico } from '../../tecnicos/tecnicos.entity';
+import { Workspace } from '../../workspaces/workspace.entity';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
@@ -25,8 +27,14 @@ export class AuthGuard implements CanActivate {
     const host = req.get('host') || 'localhost';
     const fullUrl = `${protocol}://${host}${req.originalUrl}`;
 
-    console.log('[AuthGuard] Cookie:', req.headers.cookie ? 'presente' : 'ausente');
-    console.log('[AuthGuard] x-workspace-id:', req.headers['x-workspace-id'] || 'ausente');
+    console.log(
+      '[AuthGuard] Cookie:',
+      req.headers.cookie ? 'presente' : 'ausente',
+    );
+    console.log(
+      '[AuthGuard] x-workspace-id:',
+      req.headers['x-workspace-id'] || 'ausente',
+    );
 
     const session = await this.sessionService.getSessionFromRequest(
       new Request(fullUrl, {
@@ -38,18 +46,50 @@ export class AuthGuard implements CanActivate {
 
     console.log('[AuthGuard] Session:', session ? 'válida' : 'inválida');
 
-    if (!session) throw new UnauthorizedException('Sessão inválida ou não encontrada');
+    if (!session)
+      throw new UnauthorizedException('Sessão inválida ou não encontrada');
 
     // 2️⃣ user domínio
     const user = await new TypeOrmUserResolverAdapter(
       this.dataSource,
     ).resolveByAuthUserId(session.user.id, session.user.email);
 
-    // 3️⃣ workspace ativo (header)
-    const organizationId = req.headers['x-workspace-id'] as string;
+    // 3️⃣ workspace ativo (header ou busca do técnico)
+    let organizationId = req.headers['x-workspace-id'] as string;
 
+    // Se não houver header, tenta buscar o workspaceId do técnico associado ao usuário
     if (!organizationId) {
-      throw new BadRequestException('Workspace não informado');
+      console.log(
+        '[AuthGuard] Header x-workspace-id ausente, buscando workspaceId do técnico...',
+      );
+      const tecnicoRepo = this.dataSource.getRepository(Tecnico);
+      const tecnico = await tecnicoRepo.findOne({
+        where: { email: user.email },
+        select: ['workspaceId'],
+      });
+
+      if (tecnico && tecnico.workspaceId) {
+        // Busca o workspace pelo ID para obter o authOrganizationId
+        const workspaceRepo = this.dataSource.getRepository(Workspace);
+        const workspace = await workspaceRepo.findOne({
+          where: { id: tecnico.workspaceId },
+          select: ['authOrganizationId'],
+        });
+
+        if (workspace) {
+          organizationId = workspace.authOrganizationId;
+          console.log(
+            '[AuthGuard] WorkspaceId encontrado do técnico:',
+            organizationId,
+          );
+        } else {
+          throw new BadRequestException('Workspace do técnico não encontrado');
+        }
+      } else {
+        throw new BadRequestException(
+          'Workspace não informado e técnico não encontrado para este usuário',
+        );
+      }
     }
 
     const workspaceContext = await new TypeOrmWorkspaceResolverAdapter(
