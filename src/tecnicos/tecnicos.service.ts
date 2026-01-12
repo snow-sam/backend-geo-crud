@@ -175,7 +175,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       }
 
       // Criar objeto do técnico com userId
-      const tecnico: Partial<Tecnico> = {
+      const tecnicoDto: Partial<Tecnico> = {
         nome: row.nome.trim(),
         telefone: row.telefone.toString().trim(),
         email,
@@ -186,12 +186,17 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
         placa,
         especialidade: row.especialidade?.toString().trim() || undefined,
         eAtivo: true,
-        workspaceId,
         userId: user.id,
       };
 
-      // Salvar técnico individualmente para manter consistência com o usuário criado
-      const savedTecnico = await this.repo.save(tecnico as Tecnico);
+      // Adicionar workspaceId ao DTO e salvar diretamente
+      // O workspaceId já está garantido no DTO, então podemos usar repo.save() diretamente
+      const tecnicoComWorkspace = {
+        ...tecnicoDto,
+        workspaceId,
+      } as Tecnico;
+
+      const savedTecnico = await this.repo.save(tecnicoComWorkspace);
       savedTecnicos.push(savedTecnico);
 
       // Delay de 150ms entre chamadas para evitar rate limiting da API
