@@ -5,7 +5,6 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DataSource } from 'typeorm';
 import * as XLSX from 'xlsx';
 
 import { Tecnico } from './tecnicos.entity';
@@ -27,7 +26,6 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     @InjectRepository(User) private readonly userRepo: Repository<User>,
     @InjectRepository(Workspace)
     private readonly workspaceRepo: Repository<Workspace>,
-    private readonly dataSource: DataSource,
     private readonly geocodingService: GeocodingService,
   ) {
     super(repo);
@@ -121,6 +119,76 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     return tecnico;
   }
 
+  /**
+   * Deleta um técnico e seu usuário associado
+   */
+  async deleteOneByWorkspace(
+    req: CrudRequest,
+    workspaceId: string,
+  ): Promise<void | Tecnico> {
+    // Validar ownership e buscar o técnico com o usuário
+    const tecnico = await this.validateWorkspaceOwnership(req, workspaceId);
+
+    // Buscar o técnico completo com relação ao usuário
+    const tecnicoCompleto = await this.repo.findOne({
+      where: { id: tecnico.id } as any,
+      relations: ['user'],
+    });
+
+    // Se o técnico tem um usuário associado, deletá-lo
+    if (tecnicoCompleto?.userId && tecnicoCompleto.user) {
+      try {
+        // Deletar usuário no Better Auth
+        const deleteUserRequest = new Request(
+          'http://auth.local/auth/user/delete',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              userId: tecnicoCompleto.user.authUserId,
+            }),
+          },
+        );
+
+        const response = await auth.handler(deleteUserRequest);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          this.logger.warn(
+            `Erro ao deletar usuário no Better Auth: ${response.status} - ${errorText}`,
+          );
+        } else {
+          this.logger.log(
+            `Usuário ${tecnicoCompleto.user.email} deletado no Better Auth`,
+          );
+        }
+      } catch (error) {
+        this.logger.error(
+          `Erro ao deletar usuário no Better Auth: ${error.message}`,
+        );
+        // Continua com a deleção do técnico mesmo se falhar ao deletar o usuário
+      }
+
+      // Deletar usuário na tabela local
+      try {
+        await this.userRepo.remove(tecnicoCompleto.user);
+        this.logger.log(
+          `Usuário ${tecnicoCompleto.user.email} deletado localmente`,
+        );
+      } catch (error) {
+        this.logger.error(
+          `Erro ao deletar usuário localmente: ${error.message}`,
+        );
+        // Continua com a deleção do técnico mesmo se falhar ao deletar o usuário
+      }
+    }
+
+    // Deletar o técnico
+    return super.deleteOneByWorkspace(req, workspaceId);
+  }
+
   async importFromExcel(
     fileBuffer: Buffer,
     workspaceId: string,
@@ -182,20 +250,41 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
         continue;
       }
 
-      // Adicionar usuário à organização no Better Auth
-      // Inserir diretamente na tabela auth.organization_member
+      // Adicionar usuário à organização no Better Auth via API
       try {
-        await this.dataSource.query(
-          `INSERT INTO auth.organization_member (organization_id, user_id, role, created_at)
-           VALUES ($1, $2, $3, NOW())
-           ON CONFLICT (organization_id, user_id) DO NOTHING`,
-          [workspace.authOrganizationId, user.authUserId, 'member'],
+        // Usar o handler do Better Auth para fazer a requisição
+        // O basePath é '/auth', então o endpoint completo é '/auth/organization/add-member'
+        const request = new Request(
+          'http://auth.local/auth/organization/add-member',
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              organizationId: workspace.authOrganizationId,
+              userId: user.authUserId,
+              role: 'member',
+            }),
+          },
         );
+
+        const response = await auth.handler(request);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          throw new Error(
+            `Erro ao adicionar membro: ${response.status} - ${errorText}`,
+          );
+        }
+
+        const result = await response.json();
         this.logger.log(
           `Usuário ${email} adicionado à organização ${workspace.authOrganizationId}`,
+          result,
         );
       } catch (error) {
-        this.logger.warn(
+        this.logger.error(
           `Erro ao adicionar usuário à organização: ${error.message}`,
         );
         // Não bloqueia a criação do técnico se falhar ao adicionar à organização
