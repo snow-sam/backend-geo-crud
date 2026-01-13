@@ -5,6 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
+import { DataSource } from 'typeorm';
 import * as XLSX from 'xlsx';
 
 import { Tecnico } from './tecnicos.entity';
@@ -13,6 +14,7 @@ import { GeocodingService } from '../geocoding/geocoding.service';
 import type { ExcelTecnicoRow } from './dtos/import-tecnico.dto';
 import { WorkspaceCrudService } from '../common/workspace-crud.service';
 import { User } from '../users/user.entity';
+import { Workspace } from '../workspaces/workspace.entity';
 import { auth } from '../auth/better-auth.config';
 import { CrudRequest } from '@dataui/crud';
 
@@ -23,6 +25,9 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
   constructor(
     @InjectRepository(Tecnico) repo: Repository<Tecnico>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
+    @InjectRepository(Workspace)
+    private readonly workspaceRepo: Repository<Workspace>,
+    private readonly dataSource: DataSource,
     private readonly geocodingService: GeocodingService,
   ) {
     super(repo);
@@ -162,6 +167,39 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
           `Linha ${index + 2}: Erro ao criar usuário para "${email}": ${error.message}`,
         );
         continue;
+      }
+
+      // Buscar o workspace para obter o authOrganizationId
+      const workspace = await this.workspaceRepo.findOne({
+        where: { id: workspaceId },
+        select: ['authOrganizationId'],
+      });
+
+      if (!workspace) {
+        errors.push(
+          `Linha ${index + 2}: Workspace não encontrado para o ID "${workspaceId}"`,
+        );
+        continue;
+      }
+
+      // Adicionar usuário à organização no Better Auth
+      // Inserir diretamente na tabela auth.organization_member
+      try {
+        await this.dataSource.query(
+          `INSERT INTO auth.organization_member (organization_id, user_id, role, created_at)
+           VALUES ($1, $2, $3, NOW())
+           ON CONFLICT (organization_id, user_id) DO NOTHING`,
+          [workspace.authOrganizationId, user.authUserId, 'member'],
+        );
+        this.logger.log(
+          `Usuário ${email} adicionado à organização ${workspace.authOrganizationId}`,
+        );
+      } catch (error) {
+        this.logger.warn(
+          `Erro ao adicionar usuário à organização: ${error.message}`,
+        );
+        // Não bloqueia a criação do técnico se falhar ao adicionar à organização
+        // O usuário pode ser adicionado manualmente depois
       }
 
       // Buscar dados de geocodificação
