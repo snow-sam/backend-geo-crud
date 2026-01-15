@@ -10,7 +10,7 @@ export class BetterAuthSessionAdapter implements SessionService {
         cookie,
       },
     });
-
+    console.log('result', result);
     if (!result?.session || !result?.user) {
       return null;
     }
