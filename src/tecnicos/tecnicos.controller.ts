@@ -27,6 +27,7 @@ import { TecnicosService } from './tecnicos.service';
 import { CreateTecnicoDto } from './dtos/create-tecnico.dto';
 import { UpdateTecnicoDto } from './dtos/update-tecnico.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
+import { auth } from 'src/auth/better-auth.config';
 
 @Crud({
   model: { type: Tecnico },
@@ -124,6 +125,11 @@ export class TecnicosController implements CrudController<Tecnico> {
     }
 
     const workspaceId = (request as any).workspace.id;
-    return this.service.importFromExcel(file.buffer, workspaceId);
+    const session = await auth.api.getSession({
+      headers: {
+        cookie: request.headers.cookie ?? '',
+      },
+    });
+    return this.service.importFromExcel(file.buffer, workspaceId, session?.session?.activeOrganizationId || '');
   }
 }
