@@ -254,7 +254,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       try {
         await auth.api.addMember({
           body: {
-            organizationId: workspace.authOrganizationId,
+            organizationId: workspaceId,
             userId: user.authUserId,
             role: 'member',
           },
