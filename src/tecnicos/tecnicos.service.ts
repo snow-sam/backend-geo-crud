@@ -252,36 +252,16 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
 
       // Adicionar usuário à organização no Better Auth via API
       try {
-        // Usar o handler do Better Auth para fazer a requisição
-        // O basePath é '/auth', então o endpoint completo é '/auth/organization/add-member'
-        const request = new Request(
-          'http://auth.local/auth/organization/add-member',
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-              organizationId: workspace.authOrganizationId,
-              userId: user.authUserId,
-              role: 'member',
-            }),
+        await auth.api.addMember({
+          body: {
+            organizationId: workspace.authOrganizationId,
+            userId: user.authUserId,
+            role: 'member',
           },
-        );
+        });
 
-        const response = await auth.handler(request);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          throw new Error(
-            `Erro ao adicionar membro: ${response.status} - ${errorText}`,
-          );
-        }
-
-        const result = await response.json();
         this.logger.log(
           `Usuário ${email} adicionado à organização ${workspace.authOrganizationId}`,
-          result,
         );
       } catch (error) {
         this.logger.error(
