@@ -43,7 +43,7 @@ export class AuthGuard implements CanActivate {
         },
       }),
     );
-
+    console.log(req.headers.cookie);
     console.log('[AuthGuard] Session:', session ? 'válida' : 'inválida');
 
     if (!session)
