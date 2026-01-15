@@ -1,4 +1,9 @@
-import { Injectable, Logger, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Logger,
+  BadRequestException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import * as XLSX from 'xlsx';
 
@@ -20,7 +25,8 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
   constructor(
     @InjectRepository(Tecnico) repo: Repository<Tecnico>,
     @InjectRepository(User) private readonly userRepo: Repository<User>,
-    @InjectRepository(Workspace) private readonly workspaceRepo: Repository<Workspace>,
+    @InjectRepository(Workspace)
+    private readonly workspaceRepo: Repository<Workspace>,
     private readonly geocodingService: GeocodingService,
   ) {
     super(repo);
@@ -30,7 +36,10 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
    * Gera uma senha temporária caso a placa não seja informada
    */
   private generateTempPassword(): string {
-    return Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8).toUpperCase();
+    return (
+      Math.random().toString(36).slice(-8) +
+      Math.random().toString(36).slice(-8).toUpperCase()
+    );
   }
 
   /**
@@ -48,7 +57,9 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       });
 
       if (!authResult?.user) {
-        throw new BadRequestException('Falha ao criar usuário no sistema de autenticação');
+        throw new BadRequestException(
+          'Falha ao criar usuário no sistema de autenticação',
+        );
       }
 
       this.logger.log(`Usuário criado no Better Auth: ${authResult.user.id}`);
@@ -112,7 +123,11 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
   /**
    * Deleta um técnico e seu usuário associado
    */
-  async deleteOneByWorkspace(req: CrudRequest, workspaceId: string): Promise<void | Tecnico> {
+  async deleteOneByWorkspace(
+    req: CrudRequest,
+    workspaceId: string,
+    token: string,
+  ): Promise<void | Tecnico> {
     // Validar ownership e buscar o técnico com o usuário
     const tecnico = await this.validateWorkspaceOwnership(req, workspaceId);
 
@@ -127,22 +142,28 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       try {
         // Deletar usuário no Better Auth
         await auth.api.deleteUser({
-          body: {
-            token: (request as any).session.token,
-          },
+          body: { token },
         });
-        this.logger.log(`Usuário ${tecnicoCompleto.user.email} deletado no Better Auth`);
+        this.logger.log(
+          `Usuário ${tecnicoCompleto.user.email} deletado no Better Auth`,
+        );
       } catch (error) {
-        this.logger.error(`Erro ao deletar usuário no Better Auth: ${error.message}`);
+        this.logger.error(
+          `Erro ao deletar usuário no Better Auth: ${error.message}`,
+        );
         // Continua com a deleção do técnico mesmo se falhar ao deletar o usuário
       }
 
       // Deletar usuário na tabela local
       try {
         await this.userRepo.remove(tecnicoCompleto.user);
-        this.logger.log(`Usuário ${tecnicoCompleto.user.email} deletado localmente`);
+        this.logger.log(
+          `Usuário ${tecnicoCompleto.user.email} deletado localmente`,
+        );
       } catch (error) {
-        this.logger.error(`Erro ao deletar usuário localmente: ${error.message}`);
+        this.logger.error(
+          `Erro ao deletar usuário localmente: ${error.message}`,
+        );
         // Continua com a deleção do técnico mesmo se falhar ao deletar o usuário
       }
     }
@@ -151,7 +172,11 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     return super.deleteOneByWorkspace(req, workspaceId);
   }
 
-  async importFromExcel(fileBuffer: Buffer, workspaceId: string, activeOrganizationId: string): Promise<Tecnico[]> {
+  async importFromExcel(
+    fileBuffer: Buffer,
+    workspaceId: string,
+    activeOrganizationId: string,
+  ): Promise<Tecnico[]> {
     // Ler o arquivo Excel do buffer
     const workbook = XLSX.read(fileBuffer, { type: 'buffer' });
     const sheetName = workbook.SheetNames[0];
@@ -170,9 +195,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     const errors: string[] = [];
 
     for (const [index, row] of rows.entries()) {
-      this.logger.log(
-        `(${index + 1}/${rows.length}) Processando: ${row.nome}`,
-      );
+      this.logger.log(`(${index + 1}/${rows.length}) Processando: ${row.nome}`);
 
       // Validar campos obrigatórios
       if (!row.nome || !row.endereco || !row.telefone || !row.email) {
@@ -221,9 +244,13 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
           },
         });
 
-        this.logger.log(`Usuário ${email} adicionado à organização ${workspace.authOrganizationId}`);
+        this.logger.log(
+          `Usuário ${email} adicionado à organização ${workspace.authOrganizationId}`,
+        );
       } catch (error) {
-        this.logger.error(`Erro ao adicionar usuário à organização: ${error.message}`);
+        this.logger.error(
+          `Erro ao adicionar usuário à organização: ${error.message}`,
+        );
         // Não bloqueia a criação do técnico se falhar ao adicionar à organização
         // O usuário pode ser adicionado manualmente depois
       }
@@ -273,9 +300,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       );
     }
 
-    this.logger.log(
-      `${savedTecnicos.length} técnicos importados com sucesso`,
-    );
+    this.logger.log(`${savedTecnicos.length} técnicos importados com sucesso`);
 
     if (errors.length > 0) {
       this.logger.warn(`Erros durante importação: ${errors.join('; ')}`);

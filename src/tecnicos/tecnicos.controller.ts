@@ -86,7 +86,12 @@ export class TecnicosController implements CrudController<Tecnico> {
     @Req() request: Request,
   ): Promise<void | Tecnico> {
     const workspaceId = (request as any).workspace.id;
-    return this.service.deleteOneByWorkspace(req, workspaceId);
+    const session = await auth.api.getSession({
+      headers: {
+        cookie: request.headers.cookie ?? '',
+      },
+    });
+    return this.service.deleteOneByWorkspace(req, workspaceId, session?.session?.token || '');
   }
 
   @Post('import')

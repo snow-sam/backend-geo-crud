@@ -36,7 +36,7 @@ export abstract class WorkspaceCrudService<
     } else {
       // Se existe outro tipo de filtro, envolve tudo em um $and
       const { $and, $or, ...otherFilters } = existingSearch;
-      
+
       if (Object.keys(otherFilters).length > 0) {
         req.parsed.search = {
           $and: [otherFilters, workspaceFilter],
@@ -124,7 +124,7 @@ export abstract class WorkspaceCrudService<
   /**
    * Deleta um registro, validando pertencimento ao workspace
    */
-  async deleteOneByWorkspace(req: CrudRequest, workspaceId: string): Promise<void | T> {
+  async deleteOneByWorkspace(req: CrudRequest, workspaceId: string, token?: string): Promise<void | T> {
     await this.validateWorkspaceOwnership(req, workspaceId);
     return this.deleteOne(req);
   }
