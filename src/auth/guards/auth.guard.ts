@@ -45,7 +45,7 @@ export class AuthGuard implements CanActivate {
     );
     console.log(req.headers.cookie);
     console.log('[AuthGuard] Session:', session ? 'válida' : 'inválida');
-
+    console.log('[AuthGuard] Session:', session);
     if (!session)
       throw new UnauthorizedException('Sessão inválida ou não encontrada');
 
