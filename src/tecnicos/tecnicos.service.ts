@@ -11,6 +11,7 @@ import { User } from '../users/user.entity';
 import { Workspace } from '../workspaces/workspace.entity';
 import { auth } from '../auth/better-auth.config';
 import { CrudRequest } from '@dataui/crud';
+import { request } from 'http';
 
 @Injectable()
 export class TecnicosService extends WorkspaceCrudService<Tecnico> {
@@ -125,24 +126,12 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     if (tecnicoCompleto?.userId && tecnicoCompleto.user) {
       try {
         // Deletar usuário no Better Auth
-        const deleteUserRequest = new Request('http://auth.local/auth/user/delete', {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
+        await auth.api.deleteUser({
+          body: {
+            token: (request as any).session.token,
           },
-          body: JSON.stringify({
-            userId: tecnicoCompleto.user.authUserId,
-          }),
         });
-
-        const response = await auth.handler(deleteUserRequest);
-
-        if (!response.ok) {
-          const errorText = await response.text();
-          this.logger.warn(`Erro ao deletar usuário no Better Auth: ${response.status} - ${errorText}`);
-        } else {
-          this.logger.log(`Usuário ${tecnicoCompleto.user.email} deletado no Better Auth`);
-        }
+        this.logger.log(`Usuário ${tecnicoCompleto.user.email} deletado no Better Auth`);
       } catch (error) {
         this.logger.error(`Erro ao deletar usuário no Better Auth: ${error.message}`);
         // Continua com a deleção do técnico mesmo se falhar ao deletar o usuário
