@@ -3,11 +3,23 @@ import { auth } from './better-auth.config';
 import { Request, Response } from 'express';
 import { BetterAuthExpressAdapter } from './adapters/better-auth-express.adapter';
 import { AuthGuard } from './guards/auth.guard';
-import { DataSource } from 'typeorm';
+import { Pool } from 'pg';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private readonly dataSource: DataSource) {}
+  private readonly pool: Pool;
+
+  constructor() {
+    // Cria um pool separado com as mesmas configurações do better-auth
+    this.pool = new Pool({
+      host: process.env.POSTGRES_HOST,
+      port: Number(process.env.POSTGRES_PORT),
+      database: process.env.POSTGRES_DATABASE,
+      user: process.env.POSTGRES_USER,
+      password: process.env.POSTGRES_PASSWORD,
+      ssl: false,
+    });
+  }
 
   @UseGuards(AuthGuard)
   @Get('me')
@@ -26,40 +38,73 @@ export class AuthController {
     }
 
     try {
-      // Busca a organização diretamente do banco do better-auth usando DataSource
-      const queryRunner = this.dataSource.createQueryRunner();
-      await queryRunner.connect();
+      // Descobre o nome correto da tabela de organização
+      const tablesResult = await this.pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'auth' 
+        AND table_name LIKE '%organization%'
+        ORDER BY table_name
+      `);
 
-      const organizationResult = await queryRunner.query(
-        `SELECT * FROM auth.organization WHERE slug = $1`,
+      if (tablesResult.rows.length === 0) {
+        return res.status(500).json({ error: 'Tabela de organização não encontrada no schema auth' });
+      }
+
+      const orgTableName = tablesResult.rows[0].table_name;
+      console.log('Usando tabela:', orgTableName);
+
+      // Busca a organização
+      const organizationResult = await this.pool.query(
+        `SELECT * FROM auth."${orgTableName}" WHERE slug = $1 LIMIT 1`,
         [organizationSlug]
       );
 
-      if (organizationResult.length === 0) {
-        await queryRunner.release();
+      if (organizationResult.rows.length === 0) {
         return res.status(404).json({ error: 'Organização não encontrada' });
       }
 
-      const organization = organizationResult[0];
+      const organization = organizationResult.rows[0];
 
-      // Busca os membros da organização
-      const membersResult = await queryRunner.query(
-        `SELECT om.*, u.email, u.name as user_name 
-         FROM auth.organization_member om
-         JOIN auth.user u ON om.user_id = u.id
-         WHERE om.organization_id = $1`,
-        [organization.id]
-      );
+      // Descobre o nome da tabela de membros
+      const memberTablesResult = await this.pool.query(`
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'auth' 
+        AND table_name LIKE '%member%'
+        AND table_name LIKE '%organization%'
+        ORDER BY table_name
+      `);
 
-      await queryRunner.release();
+      let members = [];
+      if (memberTablesResult.rows.length > 0) {
+        const memberTableName = memberTablesResult.rows[0].table_name;
+        console.log('Usando tabela de membros:', memberTableName);
+
+        try {
+          const membersResult = await this.pool.query(
+            `SELECT om.*, u.email, u.name as user_name 
+             FROM auth."${memberTableName}" om
+             JOIN auth."user" u ON om.user_id = u.id
+             WHERE om.organization_id = $1`,
+            [organization.id]
+          );
+          members = membersResult.rows;
+        } catch (e) {
+          console.warn('Erro ao buscar membros:', e);
+        }
+      }
 
       return res.json({
         ...organization,
-        members: membersResult,
+        members,
       });
     } catch (error) {
       console.error('Erro ao buscar organização:', error);
-      return res.status(500).json({ error: 'Erro ao buscar organização' });
+      return res.status(500).json({ 
+        error: 'Erro ao buscar organização',
+        details: error instanceof Error ? error.message : String(error)
+      });
     }
   }
 
