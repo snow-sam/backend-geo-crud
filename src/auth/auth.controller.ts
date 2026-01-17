@@ -15,12 +15,6 @@ export class AuthController {
     };
   }
 
-  // Rota pública sem autenticação
-  @All('organization/get-full-organization')
-  async getFullOrganization(@Req() req: Request, @Res() res: Response) {
-    return BetterAuthExpressAdapter.handle(req, res, auth.handler);
-  }
-
   @All('*path')
   async handler(@Req() req: Request, @Res() res: Response) {
     return BetterAuthExpressAdapter.handle(req, res, auth.handler);
