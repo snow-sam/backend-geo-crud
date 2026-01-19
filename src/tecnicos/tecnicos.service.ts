@@ -14,9 +14,10 @@ import type { ExcelTecnicoRow } from './dtos/import-tecnico.dto';
 import { WorkspaceCrudService } from '../common/workspace-crud.service';
 import { User } from '../users/user.entity';
 import { Workspace } from '../workspaces/workspace.entity';
-import { auth } from '../auth/better-auth.config';
 import { CrudRequest } from '@dataui/crud';
 import { request } from 'http';
+import { Inject } from '@nestjs/common';
+import { BETTER_AUTH_TOKEN } from '../auth/auth.module';
 
 @Injectable()
 export class TecnicosService extends WorkspaceCrudService<Tecnico> {
@@ -28,6 +29,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     @InjectRepository(Workspace)
     private readonly workspaceRepo: Repository<Workspace>,
     private readonly geocodingService: GeocodingService,
+    @Inject(BETTER_AUTH_TOKEN) private readonly auth: ReturnType<typeof import('../auth/better-auth.config').createBetterAuth>,
   ) {
     super(repo);
   }
@@ -48,7 +50,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
   private async createAuthUser(email: string, password: string): Promise<User> {
     try {
       // Cria usuário no Better Auth
-      const authResult = await auth.api.signUpEmail({
+      const authResult = await this.auth.api.signUpEmail({
         body: {
           email,
           password,
@@ -141,7 +143,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
     if (tecnicoCompleto?.userId && tecnicoCompleto.user) {
       try {
         // Deletar usuário no Better Auth
-        await auth.api.deleteUser({
+        await this.auth.api.deleteUser({
           body: { token },
         });
         this.logger.log(
@@ -236,7 +238,7 @@ export class TecnicosService extends WorkspaceCrudService<Tecnico> {
       console.log('activeOrganizationId', activeOrganizationId);
       // Adicionar usuário à organização no Better Auth via API
       try {
-        await auth.api.addMember({
+        await this.auth.api.addMember({
           body: {
             organizationId: activeOrganizationId,
             userId: user.authUserId,

@@ -15,9 +15,10 @@ import { Workspace } from '../../workspaces/workspace.entity';
 
 @Injectable()
 export class AuthGuard implements CanActivate {
-  constructor(private readonly dataSource: DataSource) {}
-
-  private readonly sessionService = new BetterAuthSessionAdapter();
+  constructor(
+    private readonly dataSource: DataSource,
+    private readonly sessionService: BetterAuthSessionAdapter,
+  ) {}
 
   async canActivate(context: ExecutionContext) {
     const req = context.switchToHttp().getRequest<ExpressRequest>();
