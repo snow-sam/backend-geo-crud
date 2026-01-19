@@ -3,7 +3,6 @@ import { TypeOrmModule } from "@nestjs/typeorm";
 import { ClientesModule } from "src/clientes/clientes.module";
 import { TecnicosModule } from "src/tecnicos/tecnicos.module";
 import { VisitasModule } from "src/visitas/visitas.module";
-import { AuthModule } from "src/auth/auth.module";
 import { Visita } from "src/visitas/visitas.entity";
 import { Roteiro } from "src/roteiros/roteiros.entity";
 import { MonthlyPlannerService } from "./agenda-mes.service";
@@ -16,7 +15,6 @@ import { AgendaMesController } from "./agenda-mes.controller";
     ClientesModule,
     TecnicosModule,
     VisitasModule,
-    AuthModule,
   ],
   providers: [MonthlyPlannerService, FleetRoutingService],
   exports: [MonthlyPlannerService, FleetRoutingService],
