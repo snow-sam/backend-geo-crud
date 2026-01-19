@@ -12,12 +12,14 @@ export const auth = betterAuth({
     password: process.env.POSTGRES_PASSWORD,
     ssl: false,
   }),
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
+      domain: process.env.FRONTEND_URL || '',
+  },
+  },
 
   schema: 'auth',
-  cookies: {
-    sameSite: 'none',
-    secure: true,
-  },
   emailAndPassword: {
     enabled: true,
     requireEmailVerification: false,
