@@ -3,64 +3,58 @@ import { betterAuth } from 'better-auth';
 import { organization } from 'better-auth/plugins';
 import { Pool } from 'pg';
 
-/**
- * Factory function para criar a instância do BetterAuth
- * Esta função deve ser chamada apenas uma vez através do provider do NestJS
- */
-export function createBetterAuth() {
-  return betterAuth({
-    database: new Pool({
-      host: process.env.POSTGRES_HOST,
-      port: Number(process.env.POSTGRES_PORT),
-      database: process.env.POSTGRES_DATABASE,
-      user: process.env.POSTGRES_USER,
-      password: process.env.POSTGRES_PASSWORD,
-      ssl: false,
-    }),
-    advanced: {
-      crossSubDomainCookies: {
-        enabled: true,
-        domain: '.rotgo.com.br',
-        sameSite: 'lax',
-        secure: true,
-        httpOnly: true,
-      },
-    },
-
-    cookies: {
+export const auth = betterAuth({
+  database: new Pool({
+    host: process.env.POSTGRES_HOST,
+    port: Number(process.env.POSTGRES_PORT),
+    database: process.env.POSTGRES_DATABASE,
+    user: process.env.POSTGRES_USER,
+    password: process.env.POSTGRES_PASSWORD,
+    ssl: false,
+  }),
+  advanced: {
+    crossSubDomainCookies: {
+      enabled: true,
       domain: '.rotgo.com.br',
       sameSite: 'lax',
       secure: true,
       httpOnly: true,
     },
+  },
 
-    schema: 'auth',
-    emailAndPassword: {
+  cookies: {
+    domain: '.rotgo.com.br',
+    sameSite: 'lax',
+    secure: true,
+    httpOnly: true,
+  },
+
+  schema: 'auth',
+  emailAndPassword: {
+    enabled: true,
+    requireEmailVerification: false,
+  },
+
+  user: {
+    deleteUser: {
       enabled: true,
-      requireEmailVerification: false,
     },
+  },
 
-    user: {
-      deleteUser: {
-        enabled: true,
-      },
-    },
+  session: {
+    expiresIn: 60 * 60 * 24 * 7, // 7 dias
+  },
 
-    session: {
-      expiresIn: 60 * 60 * 24 * 7, // 7 dias
-    },
-
-    plugins: [
-      organization({
-        allowUserToCreateOrganization: true,
-        organizationNameMinLength: 3,
-      }),
-    ],
-    basePath: '/auth',
-    trustedOrigins: [
-      process.env.FRONTEND_URL || '',
-      'http://localhost:3000',
-      '*://*',
-    ],
-  });
-}
+  plugins: [
+    organization({
+      allowUserToCreateOrganization: true,
+      organizationNameMinLength: 3,
+    }),
+  ],
+  basePath: '/auth',
+  trustedOrigins: [
+    process.env.FRONTEND_URL || '',
+    'http://localhost:3000',
+    '*://*',
+  ],
+});

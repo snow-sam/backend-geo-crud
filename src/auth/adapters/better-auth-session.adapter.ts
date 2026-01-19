@@ -1,17 +1,11 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { auth } from '../better-auth.config';
 import { SessionService, AuthSession } from '../ports/session.port';
-import { BETTER_AUTH_TOKEN } from '../auth.module';
 
-@Injectable()
 export class BetterAuthSessionAdapter implements SessionService {
-  constructor(
-    @Inject(BETTER_AUTH_TOKEN) private readonly auth: ReturnType<typeof import('../better-auth.config').createBetterAuth>,
-  ) {}
-
   async getSessionFromRequest(req: Request): Promise<AuthSession | null> {
     const cookie = req.headers.get('cookie') ?? '';
 
-    const result = await this.auth.api.getSession({
+    const result = await auth.api.getSession({
       headers: {
         cookie,
       },

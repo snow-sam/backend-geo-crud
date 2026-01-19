@@ -27,8 +27,7 @@ import { TecnicosService } from './tecnicos.service';
 import { CreateTecnicoDto } from './dtos/create-tecnico.dto';
 import { UpdateTecnicoDto } from './dtos/update-tecnico.dto';
 import { AuthGuard } from '../auth/guards/auth.guard';
-import { Inject } from '@nestjs/common';
-import { BETTER_AUTH_TOKEN } from '../auth/auth.module';
+import { auth } from 'src/auth/better-auth.config';
 
 @Crud({
   model: { type: Tecnico },
@@ -41,10 +40,7 @@ import { BETTER_AUTH_TOKEN } from '../auth/auth.module';
 @UseGuards(AuthGuard)
 @Controller('tecnicos')
 export class TecnicosController implements CrudController<Tecnico> {
-  constructor(
-    public service: TecnicosService,
-    @Inject(BETTER_AUTH_TOKEN) private readonly auth: ReturnType<typeof import('../auth/better-auth.config').createBetterAuth>,
-  ) {}
+  constructor(public service: TecnicosService) {}
 
   @Override()
   async getMany(
@@ -90,7 +86,7 @@ export class TecnicosController implements CrudController<Tecnico> {
     @Req() request: Request,
   ): Promise<void | Tecnico> {
     const workspaceId = (request as any).workspace.id;
-    const session = await this.auth.api.getSession({
+    const session = await auth.api.getSession({
       headers: {
         cookie: request.headers.cookie ?? '',
       },
@@ -134,7 +130,7 @@ export class TecnicosController implements CrudController<Tecnico> {
     }
 
     const workspaceId = (request as any).workspace.id;
-    const session = await this.auth.api.getSession({
+    const session = await auth.api.getSession({
       headers: {
         cookie: request.headers.cookie ?? '',
       },
