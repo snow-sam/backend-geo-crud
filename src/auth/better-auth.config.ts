@@ -15,8 +15,18 @@ export const auth = betterAuth({
   advanced: {
     crossSubDomainCookies: {
       enabled: true,
-      domain: process.env.FRONTEND_URL || '',
+      domain: '.rotgo.com.br',
+      sameSite: 'lax',
+      secure: true,
+      httpOnly: true,
+    },
   },
+
+  cookies: {
+    domain: '.rotgo.com.br',
+    sameSite: 'lax',
+    secure: true,
+    httpOnly: true,
   },
 
   schema: 'auth',
