@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { AuthController } from './auth.controller';
 import { createBetterAuth } from './better-auth.config';
 import { BetterAuthSessionAdapter } from './adapters/better-auth-session.adapter';
+import { AuthGuard } from './guards/auth.guard';
 
 // Token para injeção do BetterAuth
 export const BETTER_AUTH_TOKEN = 'BETTER_AUTH';
@@ -17,7 +18,8 @@ export const BETTER_AUTH_TOKEN = 'BETTER_AUTH';
       },
     },
     BetterAuthSessionAdapter,
+    AuthGuard,
   ],
-  exports: [BETTER_AUTH_TOKEN, BetterAuthSessionAdapter],
+  exports: [BETTER_AUTH_TOKEN, BetterAuthSessionAdapter, AuthGuard],
 })
 export class AuthModule {}
