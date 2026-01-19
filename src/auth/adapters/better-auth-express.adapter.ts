@@ -40,9 +40,23 @@ export class BetterAuthExpressAdapter {
 
     res.status(fetchResponse.status);
 
+    // Trata múltiplos headers set-cookie corretamente
+    const setCookieHeaders: string[] = [];
+    
     fetchResponse.headers.forEach((value, key) => {
-      res.setHeader(key, value);
+      if (key.toLowerCase() === 'set-cookie') {
+        setCookieHeaders.push(value);
+        console.log('BetterAuth Set-Cookie:', value);
+      } else {
+        res.setHeader(key, value);
+      }
     });
+
+    // Adiciona todos os cookies - Express suporta array para set-cookie
+    if (setCookieHeaders.length > 0) {
+      console.log('Total Set-Cookie headers:', setCookieHeaders.length);
+      res.setHeader('set-cookie', setCookieHeaders);
+    }
 
     const body = await fetchResponse.text();
     res.send(body);
